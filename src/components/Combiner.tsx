@@ -1,102 +1,127 @@
+import { ErrorMessage, Field, FieldArray, Form, Formik } from "formik";
 import { useState } from "react";
+import * as Yup from "yup";
 import AddButton from "./AddButton";
 import DeleteButton from "./DeleteButton";
-import Input from "./Input";
-import Select from "./Select";
-
-interface Value {
-  name: string;
-  value: string;
-}
 
 const options = ["Facebook", "Twitter", "Google", "Linkedin"];
 
+const validationSchema = Yup.object().shape({
+  finalValues: Yup.array().of(
+    Yup.object().shape({
+      name: Yup.string().required("Name is required"),
+      value: Yup.string().required("Value is required"),
+    })
+  ),
+});
+
 const Combiner = () => {
-  const [finalValues, setFinalValues] = useState<Value[]>([
-    {
-      name: "Facebook",
-      value: "",
-    },
-  ]);
   const [print, setPrint] = useState(false);
-
-  const handleNameChange = (idx: number, newName: Value["name"]) => {
-    setFinalValues((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, name: newName } : v))
-    );
-  };
-
-  const handleValueChange = (idx: number, newValue: string) => {
-    setFinalValues((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, value: newValue } : v))
-    );
-  };
-
-  const handleAddRow = () => {
-    setFinalValues((prev) => [
-      ...prev,
-      {
-        name: "Facebook",
-        value: "",
-      },
-    ]);
-  };
-
-  const handleDeleteRow = (idx: number) => {
-    setFinalValues((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const [finalValues, setFinalValues] = useState<
+    { name: string; value: string }[]
+  >([]);
 
   return (
     <div className="d-flex flex-column gap-2">
-      {finalValues.map((v, idx) => (
-        <div
-          className="d-flex w-100 justify-content-center align-items-center gap-2"
-          key={idx}
-        >
-          <Select
-            value={v.name}
-            onChange={(e) => handleNameChange(idx, e.target.value)}
-            options={options}
-          />
-          <Input
-            value={v.value}
-            onChange={(e) => handleValueChange(idx, e.target.value)}
-            placeholder="Enter your value"
-            type="text"
-            onKeyDown={(e) => {
-              if (finalValues[idx].value === "" && e.key === "Enter") {
-                alert("Please enter a value first");
-              } else if (
-                e.key === "Enter" &&
-                finalValues[idx].value !== "" &&
-                idx === finalValues.length - 1
-              ) {
-                handleAddRow();
-              }
-            }}
-          />
-          <div className="d-flex gap-2">
-            {idx === finalValues.length - 1 && (
-              <AddButton onClick={handleAddRow} />
-            )}
-            {idx !== finalValues.length - 1 && (
-              <DeleteButton onClick={() => handleDeleteRow(idx)} />
-            )}
-          </div>
-        </div>
-      ))}
-      <div className="d-grid gap-2 col-6 mx-auto mt-3">
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => {
-            setFinalValues((prev) => prev.filter((v) => v.value !== ""));
-            setPrint((prev) => !prev);
-          }}
-        >
-          Button
-        </button>
-      </div>
+      <Formik
+        initialValues={{
+          finalValues: [
+            {
+              name: "Facebook",
+              value: "",
+            },
+          ],
+        }}
+        validationSchema={validationSchema}
+        onSubmit={(values) => {
+          setFinalValues(values.finalValues.filter((v) => v.value !== ""));
+          setPrint(true);
+        }}
+      >
+        {({ values, handleSubmit }) => (
+          <Form>
+            <FieldArray name="finalValues">
+              {({ push, remove }) => (
+                <div className="d-flex flex-column gap-2">
+                  {values.finalValues.map((_, idx) => (
+                    <div
+                      className="d-flex w-100 justify-content-center align-items-center gap-2"
+                      key={idx}
+                    >
+                      <Field
+                        as="select"
+                        name={`finalValues[${idx}].name`}
+                        className="form-select"
+                      >
+                        {options.map((option, i) => (
+                          <option key={i} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </Field>
+                      <ErrorMessage
+                        name={`finalValues[${idx}].name`}
+                        component="div"
+                        className="text-danger"
+                      />
+
+                      <div className="position-relative w-100">
+                        <Field
+                          type="text"
+                          onKeyDown={(e: any) => {
+                            if (
+                              e.key === "Enter" &&
+                              idx === values.finalValues.length - 1 &&
+                              values.finalValues[idx].value !== ""
+                            ) {
+                              push({ name: "Facebook", value: "" });
+                            }
+                          }}
+                          name={`finalValues[${idx}].value`}
+                          placeholder="Enter your value"
+                          className="form-control"
+                        />
+                        <ErrorMessage
+                          name={`finalValues[${idx}].value`}
+                          component="div"
+                          className="text-danger position-absolute end-0 bottom-20"
+                        />
+                      </div>
+
+                      {values.finalValues.length !== 1 && (
+                        <DeleteButton onClick={() => remove(idx)} />
+                      )}
+                      <div className="d-flex gap-2">
+                        {idx === values.finalValues.length - 1 && (
+                          <AddButton
+                            onClick={() => {
+                              if (values.finalValues[idx].value !== "")
+                                push({ name: "Facebook", value: "" });
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </FieldArray>
+
+            <div className="d-grid gap-2 col-6 mx-auto mt-3">
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => {
+                  handleSubmit();
+                }}
+              >
+                Button
+              </button>
+            </div>
+          </Form>
+        )}
+      </Formik>
+
       {print && (
         <table className="table">
           <thead>
